@@ -1,0 +1,129 @@
+---
+title: " Q8 Association Rules"
+date: "2023-08-14"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 
+
+```{r cars}
+library(tidyverse)
+library(igraph)
+library(arules)  # has a big ecosystem of packages built around it
+library(arulesViz)
+```
+
+```{r}
+#read the .txt file
+data <- readLines("groceries.txt")
+```
+
+```{r}
+# Split items and create a transaction dataset
+transactions <- strsplit(data, ",")
+```
+
+```{r}
+# Remove duplicate items within transactions
+transactions_list_clean <- lapply(transactions, function(transaction) unique(transaction))
+```
+
+```{r}
+# Cast this variable as a special arules "transactions" class.
+transactions_clean <- as(transactions_list_clean, "transactions")
+```
+
+```{r}
+# Lets look at our baskets
+inspect(head(transactions_clean) )
+```
+
+```{r}
+#Number of baskets
+dim(transactions_clean)[1]
+```
+
+```{r}
+#Top 10 most selling items
+itemFrequencyPlot(transactions_clean,topN=10,type='absolute',main = "Top 10 items in baskets")
+```
+
+```         
+```
+
+The data set has 9835 rows/baskets.
+
+Most commonly bought products are:
+
+1)  Whole milk
+
+2)  other vegetables
+
+3)  rolls/buns
+
+#### **Trying support=0.05 and confidence=0.1**
+
+```{r}
+#Trying support=0.05 and confidence=0.1
+m= apriori(transactions_clean,parameter=list(support=.005, confidence=0.1))
+summary(m)
+```
+
+This gives 1582 rules. Too many!!
+
+Let's try to increase our confidence to 0.2
+
+```{r}
+m1= apriori(transactions_clean,parameter=list(support=.005, confidence=0.2))
+summary(m1)
+```
+
+Now, we have 873 rules. Still pretty high!
+
+```{r}
+# plot all the rules in (support, confidence) space
+plot(m,jitters=0)
+```
+
+N
+
+```{r}
+plot(m, measure = c("support", "lift"), shading = "confidence")
+```
+
+```{r}
+#Using the subsets obtained from plots to identify the approximate lift and confidence thresholds
+#inspect(subset(m, ci=onfidence >0.4 ))
+#inspect(subset(m, lift >2))
+inspect(subset(m, confidence > 0.4 & lift >2))
+
+```
+
+172 rules.
+
+**Lets plot the graph to visualize associations**
+
+```{r}
+grocery_graph = associations2igraph(subset(m, subset=lift >2 & confidence >=0.4), associationsAsNodes = FALSE)
+igraph::write_graph(grocery_graph, file='grocery_vis.graphml', format = "graphml")
+```
+
+Association
+
+![](Association%20Rules.png){width="472"}
+
+Findings:
+
+1.  As seen from the bar plot earlier, whole milk and other vegetables are the most bought items (high degree).
+
+2.  We can see two clusters here-one centered around "whole milk" and other centered around "other vegetables". Purchase of other items often lead to purchase of these items.
+
+3.  Probability of purchasing Whole milk increases when there is purchase of yogurt, curd,rolls/buns.
+
+4.  Probability of purchasing other vegetables increase when people purchase root vegetables or fruits (pip fruits/tropical fruits/citrus fruits)
+
+5.  We can see that there is association between purchase of "whole milk" and other **dairy** **products** like yogurt, curd, butter while "other vegetables: is mainly associated with purchase of **fresh produce** like fruits and vegetables and items like beef and pork.
